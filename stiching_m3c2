@@ -1,0 +1,69 @@
+#code for stiching the filtered point cloud data into a combined data, also printing the maximum points obtained in which clusters and visualizing the overall filtered cluster as a whole.
+
+import open3d as o3d  # Import Open3D for handling 3D data processing
+import os  # Import os for handling directory and file paths
+
+# Define paths for input and output directories
+input_clusters_directory = r"C:\Users\devsibi\PycharmProjects\pythonProject4\lidar\output files\streaming Result\4"  # Directory containing individual point cloud clusters
+output_combined_directory = r"C:\Users\devsibi\PycharmProjects\pythonProject4\lidar\output files\stiching result\718&118"  # Directory for saving the combined point cloud
+
+# Create the output directory if it does not already exist
+os.makedirs(output_combined_directory, exist_ok=True)
+
+# Initialize an empty point cloud for storing the merged result
+combined_point_cloud = o3d.geometry.PointCloud()
+
+# Variables to track the file with the maximum number of points
+max_points = 0
+largest_point_cloud_file = ""
+
+# Get a list of .ply files from the input directory
+files_in_directory = os.listdir(input_clusters_directory)
+ply_files_list = [file for file in files_in_directory if file.endswith('.ply')]
+
+# Iterate through each .ply file in the input directory and add it to the combined point cloud
+for ply_file in ply_files_list:
+    file_path = os.path.join(input_clusters_directory, ply_file)
+
+    print(f"Loading point cloud from: {file_path}...")
+
+    # Load the current point cloud from the file
+    current_point_cloud = o3d.io.read_point_cloud(file_path)
+
+    # Check if the loaded point cloud is not empty
+    if not current_point_cloud.is_empty():
+        # Add points, colors, and normals (if they exist) to the merged point cloud
+        combined_point_cloud.points.extend(current_point_cloud.points)
+
+        if current_point_cloud.has_colors():
+            if not combined_point_cloud.has_colors():
+                combined_point_cloud.colors = o3d.utility.Vector3dVector()  # Initialize colors if not already done
+            combined_point_cloud.colors.extend(current_point_cloud.colors)
+
+        if current_point_cloud.has_normals():
+            if not combined_point_cloud.has_normals():
+                combined_point_cloud.normals = o3d.utility.Vector3dVector()  # Initialize normals if not already done
+            combined_point_cloud.normals.extend(current_point_cloud.normals)
+
+        # Count the number of points in the current cloud
+        current_point_count = len(current_point_cloud.points)
+        print(f"Added {current_point_count} points from {ply_file}.")
+
+        # Update the file with the largest number of points
+        if current_point_count > max_points:
+            max_points = current_point_count
+            largest_point_cloud_file = ply_file
+    else:
+        print(f"Warning: {ply_file} is empty or invalid.")
+
+# Output the file that has the maximum number of points
+print(f"The file with the most points is {largest_point_cloud_file}, containing {max_points} points.")
+
+# Save the combined point cloud to the specified output directory
+combined_output_file_path = os.path.join(output_combined_directory, "merged_point_cloud.ply")
+o3d.io.write_point_cloud(combined_output_file_path, combined_point_cloud)
+
+print(f"Combined point cloud successfully saved to {combined_output_file_path}.")
+
+# Optional: Visualize the combined point cloud (this may be disabled in non-GUI environments)
+o3d.visualization.draw_geometries([combined_point_cloud])  # Display the combined point cloud
